@@ -50,35 +50,12 @@ class UnclosedOpeningBracket(InvalidSyntax):
         )
 
 
-def validate(src: str):
+def parse(src: str) -> List[BFIR]:
     source_lines = src.splitlines() if src else [""]
-    bracket_stack: List[tuple[int, int]] = []
     errors: List[InvalidSyntax] = []
+    bracket_stack: List[tuple[int, int]] = []
     line_num = 1
     col_num = 1
-    for char in src:
-        if char == "[":
-            bracket_stack.append((line_num, col_num))
-        elif char == "]":
-            if not bracket_stack:
-                line_content = source_lines[line_num - 1] if source_lines else ""
-                errors.append(UnmatchedClosingBracket(line_num, col_num, line_content))
-            else:
-                bracket_stack.pop()
-        if char == "\n":
-            line_num += 1
-            col_num = 1
-        else:
-            col_num += 1
-    for err_line, err_col in bracket_stack:
-        line_content = source_lines[err_line - 1] if source_lines else ""
-        errors.append(UnclosedOpeningBracket(err_line, err_col, line_content))
-    if errors:
-        raise InvalidSyntax(errors)
-
-
-def parse(src: str) -> List[BFIR]:
-    validate(src)
     stack: List[List[BFIR]] = [[]]
 
     for char in src:
@@ -108,18 +85,40 @@ def parse(src: str) -> List[BFIR]:
             case "#":
                 current_body.append(Debug())
             case "[":
+                bracket_stack.append((line_num, col_num))
                 new_loop = Loop(body=[])
                 current_body.append(new_loop)
                 stack.append(new_loop.body)
             case "]":
-                if len(stack) == 1:
-                    raise InvalidSyntax()
-                stack.pop()
+                if not bracket_stack:
+                    line_content = (
+                        source_lines[line_num - 1]
+                        if line_num <= len(source_lines)
+                        else ""
+                    )
+                    errors.append(
+                        UnmatchedClosingBracket(line_num, col_num, line_content)
+                    )
+                else:
+                    bracket_stack.pop()
+                    stack.pop()
             case _:
                 continue
 
-    if len(stack) != 1:
-        raise InvalidSyntax()
+        if char == "\n":
+            line_num += 1
+            col_num = 1
+        else:
+            col_num += 1
+
+    for err_line, err_col in bracket_stack:
+        line_content = (
+            source_lines[err_line - 1] if err_line <= len(source_lines) else ""
+        )
+        errors.append(UnclosedOpeningBracket(err_line, err_col, line_content))
+
+    if errors:
+        raise InvalidSyntax(errors)
 
     return stack[0]
 
