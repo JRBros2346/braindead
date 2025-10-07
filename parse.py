@@ -56,10 +56,10 @@ def parse(src: str) -> List[BFIR]:
     bracket_stack: List[tuple[int, int]] = []
     line_num = 1
     col_num = 1
-    stack: List[List[BFIR]] = [[]]
+    ir: List[List[BFIR]] = [[]]
 
     for char in src:
-        current_body = stack[-1]
+        current_body = ir[-1]
 
         match char:
             case "+" | "-":
@@ -88,7 +88,7 @@ def parse(src: str) -> List[BFIR]:
                 bracket_stack.append((line_num, col_num))
                 new_loop = Loop(body=[])
                 current_body.append(new_loop)
-                stack.append(new_loop.body)
+                ir.append(new_loop.body)
             case "]":
                 if not bracket_stack:
                     line_content = (
@@ -101,7 +101,7 @@ def parse(src: str) -> List[BFIR]:
                     )
                 else:
                     bracket_stack.pop()
-                    stack.pop()
+                    ir.pop()
             case _:
                 continue
 
@@ -120,7 +120,7 @@ def parse(src: str) -> List[BFIR]:
     if errors:
         raise InvalidSyntax(errors)
 
-    return stack[0]
+    return ir[0]
 
 
 print(parse("]" + "\n" * 10000 + "--][["))
