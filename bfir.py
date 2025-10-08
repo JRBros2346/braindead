@@ -47,3 +47,25 @@ class Loop(BFIR):
 
     def __repr__(self) -> str:
         return f"Loop({self.body})"
+
+
+@dataclass
+class Zero(BFIR):
+    def __repr__(self) -> str:
+        return "Zero"
+
+
+@dataclass
+class MulAdd(BFIR):
+    ops: List[tuple[int, int]]
+
+    def __repr__(self) -> str:
+        return f"MulAdd({self.ops})"
+
+
+@dataclass
+class Copy(BFIR):
+    offsets: List[int]
+
+    def __repr__(self) -> str:
+        return f"Copy({self.offsets})"
