@@ -97,9 +97,3 @@ def parse(src: str) -> List[BFIR]:
         raise InvalidSyntax(errors)
 
     return ir[0]
-
-
-try:
-    parse("]\n]]" + "\n" * 924924 + "++>++++++[->++++++++++<]>.[][][[]")
-except Exception as e:
-    print(e)
