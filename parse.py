@@ -1,64 +1,50 @@
-from typing import List
+from typing import List, Dict
 from bfir import BFIR, Add, Move, Output, Input, Debug, Loop
+
+RED = "\033[31m"
+RESET = "\033[m"
 
 
 class InvalidSyntax(Exception):
-    def __init__(self, errors: List["InvalidSyntax"] = []):
-        if not errors:
-            super().__init__()
-            return
+    def __init__(self, errors: Dict[int, tuple[str, List[int]]]):
         self.errors = errors
-        super().__init__(self.gen_report())
-
-    def gen_report(self) -> str:
-        error_count = len(self.errors)
-        plural = "s" if error_count > 1 else ""
-        header = f"{error_count} Error{plural}:\n"
-        reports = "\n\n\n".join(str(e) for e in self.errors)
-        return header + reports
-
-
-class UnmatchedClosingBracket(InvalidSyntax):
-    def __init__(self, line_num: int, col_num: int, line_content: str):
-        self.line_num = line_num
-        self.col_num = col_num
-        self.line_content = line_content.replace("\t", "    ")
 
     def __str__(self) -> str:
-        pointer = " " * (self.col_num - 1) + "^--- Here"
-        padding = " " * len(str(self.line_num))
-        return (
-            f"Unmatched closing bracket ']' at line {self.line_num}, column {self.col_num}:\n"
-            f" {self.line_num} | {self.line_content}\n"
-            f" {padding} | {pointer}"
-        )
-
-
-class UnclosedOpeningBracket(InvalidSyntax):
-    def __init__(self, line_num: int, col_num: int, line_content: str):
-        self.line_num = line_num
-        self.col_num = col_num
-        self.line_content = line_content.replace("\t", "    ")
-
-    def __str__(self) -> str:
-        pointer = " " * (self.col_num - 1) + "^--- Here"
-        padding = " " * len(str(self.line_num))
-        return (
-            f"This opening bracket '[' at line {self.line_num}, column {self.col_num} was never closed:\n"
-            f" {self.line_num} | {self.line_content}\n"
-            f" {padding} | {pointer}"
-        )
+        padding = max(map(lambda n: len(str(n)), self.errors.keys()))
+        out_lines = []
+        for line_num in sorted(self.errors.keys()):
+            line, cols = self.errors[line_num]
+            colored = ""
+            for i, ch in enumerate(line, start=1):
+                if i in cols:
+                    if i - 1 in cols:
+                        colored += f"{ch}"
+                    else:
+                        colored += f"{RED}{ch}"
+                else:
+                    if i - 1 in cols:
+                        colored += f"{RESET}{ch}"
+                    else:
+                        colored += f"{ch}"
+            colored += RESET
+            out_lines.append(f" {line_num:>{padding}} | {colored}")
+        return "\n".join(out_lines)
 
 
 def parse(src: str) -> List[BFIR]:
     source_lines = src.splitlines() if src else [""]
-    errors: List[InvalidSyntax] = []
     bracket_stack: List[tuple[int, int]] = []
+    errors: Dict[int, tuple[str, List[int]]] = {}
     line_num = 1
     col_num = 1
     ir: List[List[BFIR]] = [[]]
 
     for char in src:
+        if char == "\n":
+            line_num += 1
+            col_num = 1
+            continue
+
         current_body = ir[-1]
 
         match char:
@@ -91,31 +77,21 @@ def parse(src: str) -> List[BFIR]:
                 ir.append(new_loop.body)
             case "]":
                 if not bracket_stack:
-                    line_content = (
-                        source_lines[line_num - 1]
-                        if line_num <= len(source_lines)
-                        else ""
-                    )
-                    errors.append(
-                        UnmatchedClosingBracket(line_num, col_num, line_content)
-                    )
+                    if line_num not in errors:
+                        errors[line_num] = (source_lines[line_num - 1], [])
+                    errors[line_num][1].append(col_num)
                 else:
                     bracket_stack.pop()
                     ir.pop()
             case _:
                 continue
 
-        if char == "\n":
-            line_num += 1
-            col_num = 1
-        else:
-            col_num += 1
+        col_num += 1
 
     for err_line, err_col in bracket_stack:
-        line_content = (
-            source_lines[err_line - 1] if err_line <= len(source_lines) else ""
-        )
-        errors.append(UnclosedOpeningBracket(err_line, err_col, line_content))
+        if err_line not in errors:
+            errors[err_line] = (source_lines[err_line - 1], [])
+        errors[err_line][1].append(err_col)
 
     if errors:
         raise InvalidSyntax(errors)
@@ -123,4 +99,7 @@ def parse(src: str) -> List[BFIR]:
     return ir[0]
 
 
-print(parse("]" + "\n" * 10000 + "--][["))
+try:
+    parse("]\n]]" + "\n" * 924924 + "++>++++++[->++++++++++<]>.[][][[]")
+except Exception as e:
+    print(e)
