@@ -11,30 +11,30 @@ def generate(ir: List[BFIR]) -> str:
         for node in ir:
             if isinstance(node, Add):
                 code.append(f"{indent}cells[ptr] += {node.delta};")
-            if isinstance(node, Move):
+            elif isinstance(node, Move):
                 code.append(f"{indent}ptr += {node.offset};")
-            if isinstance(node, Output):
+            elif isinstance(node, Output):
                 code.append(f"{indent}putchar(cells[ptr]);")
-            if isinstance(node, Input):
+            elif isinstance(node, Input):
                 code.append(f"{indent}cells[ptr] = getchar();")
-            # if isinstance(node, Debug):
+            # elif isinstance(node, Debug):
             #     code.append(
             #         f'{indent}printf("\\n[DEBUG] ptr=%d val=%d\\n", ptr, cells[ptr]);'
             #     )
-            if isinstance(node, Zero):
+            elif isinstance(node, Zero):
                 code.append(f"{indent}cells[ptr] = 0;")
-            # if isinstance(node, MulAdd):
+            # elif isinstance(node, MulAdd):
             #     for offset, factor in node.ops:
             #         if factor != 0:
             #             code.append(
             #                 f"{indent}cells[ptr + {offset}] += cells[ptr] * {factor};"
             #             )
             #     code.append(f"{indent}cells[ptr] = 0;")
-            # if isinstance(node, Copy):
+            # elif isinstance(node, Copy):
             #     for offset in node.offsets:
             #         code.append(f"{indent}cells[ptr + {offset}] += cells[ptr];")
             #     code.append(f"{indent}cells[ptr] = 0;")
-            if isinstance(node, Loop):
+            elif isinstance(node, Loop):
                 code.append(f"{indent}while (cells[ptr]) {{")
                 code.append(generate_helper(node.body, indent_level + 1))
                 code.append(f"{indent}}}")
